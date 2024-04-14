@@ -32,7 +32,7 @@ namespace arena_mr
     {
         ArenaInfo() = default;
 
-        ArenaInfo(std::size_t num_of_allocation, std::size_t capacity, char *cursor) noexcept
+        ArenaInfo(std::size_t num_of_allocation, std::size_t capacity, std::byte *cursor) noexcept
             : num_of_allocation{num_of_allocation},
               bytes_left{capacity},
               cursor{cursor},
@@ -42,7 +42,7 @@ namespace arena_mr
 
         std::size_t num_of_allocation = 0;
         std::size_t bytes_left = 0;
-        char *cursor = nullptr;
+        std::byte *cursor = nullptr;
 
         std::size_t Capacity() const noexcept
         {
@@ -109,7 +109,7 @@ namespace arena_mr
         void AllocateArena(std::size_t bytes, std::size_t alignment = alignof(std::max_align_t))
         {
             auto *arena = upstream_->allocate(bytes, alignment);
-            [[maybe_unused]] auto [it, suc] = arena_info_map_.insert(std::make_pair(arena, ArenaInfo(0, bytes, (char *)arena)));
+            [[maybe_unused]] auto [it, suc] = arena_info_map_.insert(std::make_pair(arena, ArenaInfo(0, bytes, (std::byte *)arena)));
             assert(suc);
             free_arena_list_.push_back(&it->second);
         }
@@ -134,7 +134,7 @@ namespace arena_mr
             assert(IsPowerOf2(alignment));
 
             auto aligned_cursor = active_arena_info_->AlignedCursor(alignment);
-            auto bytes_needed = ((char *)aligned_cursor - active_arena_info_->cursor) + bytes;
+            auto bytes_needed = ((std::byte *)aligned_cursor - active_arena_info_->cursor) + bytes;
 
             if (bytes_needed > active_arena_info_->bytes_left)
             {
@@ -150,7 +150,7 @@ namespace arena_mr
 
                     // Don't need to do these calculations. Bytes needed is equal to capacity.
                     aligned_cursor = cur_big_arena->AlignedCursor(alignment);
-                    bytes_needed = ((char *)aligned_cursor - cur_big_arena->cursor) + bytes;
+                    bytes_needed = ((std::byte *)aligned_cursor - cur_big_arena->cursor) + bytes;
                     cur_big_arena->Reduce(bytes_needed);
                     return aligned_cursor;
                 }
@@ -160,10 +160,12 @@ namespace arena_mr
                 }
 
                 // If the case below check was not here we will loose the arena pointed by current `active_arena_info_`.
-                if (active_arena_info_->num_of_allocation == 0)
-                {
-                    free_arena_list_.push_back(active_arena_info_);
-                }
+                // This case should not happen because we of the check `bytes > SizePerArena()`.
+                assert(active_arena_info_->num_of_allocation != 0);
+                // if (active_arena_info_->num_of_allocation == 0)
+                // {
+                //     free_arena_list_.push_back(active_arena_info_);
+                // }
 
                 active_arena_info_ = free_arena_list_.back();
                 free_arena_list_.pop_back();
@@ -171,7 +173,7 @@ namespace arena_mr
                 // We know that there is enough space in the current arena.
 
                 aligned_cursor = active_arena_info_->AlignedCursor(alignment);
-                bytes_needed = ((char *)aligned_cursor - active_arena_info_->cursor) + bytes;
+                bytes_needed = ((std::byte *)aligned_cursor - active_arena_info_->cursor) + bytes;
 
                 active_arena_info_->Reduce(bytes_needed);
 
@@ -218,7 +220,7 @@ namespace arena_mr
             {
                 arena.num_of_allocation = 0;
                 arena.bytes_left = arena.Capacity();
-                arena.cursor = (char *)arena_it->first;
+                arena.cursor = (std::byte *)arena_it->first;
 
                 if (&arena != active_arena_info_)
                 {
