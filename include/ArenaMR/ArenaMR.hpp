@@ -156,7 +156,6 @@ namespace arena_mr
         void InitializeArenas()
         {
             arena_info_map_.emplace(MIN_POINTER, ArenaInfo{}); // Limit to the bottom of the map
-            arena_info_map_.emplace(MAX_POINTER, ArenaInfo{}); // Limit to the top of the map
 
             for (size_t i = 0; i < NumOfArenas(); i++)
             {
@@ -238,7 +237,7 @@ namespace arena_mr
             auto arena_it = std::prev(arena_info_map_.upper_bound(p));
 
             // If pointer is allocated from this allocator it should be found in the `arena_info_map_`.
-            if (arena_it->first == MIN_POINTER || arena_it->first == MAX_POINTER)
+            if (arena_it->first == MIN_POINTER)
             {
                 throw ArenaMrCorruption(p, bytes, alignment);
             }
@@ -270,7 +269,6 @@ namespace arena_mr
 
     private:
         static constexpr void *MIN_POINTER = nullptr;
-        static constexpr void *MAX_POINTER = (void *)INT64_MAX;
 
         std::size_t num_of_arenas_;  // Number of arenas.
         std::size_t size_per_arena_; // Size of each arena in bytes.
