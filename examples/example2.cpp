@@ -14,7 +14,7 @@ int main()
     using namespace std::chrono;
 
     {
-        arena_mr::UnsynchronizedArenaMR memory_resource(10, 10'000);
+        arena_mr::UnsynchronizedArenaMR memory_resource(10, 10'000); // tune your arena
 
         steady_clock::time_point begin = steady_clock::now();
 
