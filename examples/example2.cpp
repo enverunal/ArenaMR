@@ -1,21 +1,55 @@
 #include "ArenaMR/ArenaMR.hpp"
 
-#include <iostream>
-#include <memory_resource>
-#include <map>
-#include <string>
 #include <array>
+#include <chrono>
+#include <iostream>
+#include <map>
+#include <memory_resource>
+#include <string>
+#include <thread>
+#include <unordered_map>
 
 int main()
 {
-    // std::pmr::monotonic_buffer_resource mbr(10'000);
+    using namespace std::chrono;
 
-    arena_mr::UnsynchronizedArenaMR arena_resource(10, 128);
-
-    std::pmr::vector<int> x(&arena_resource);
-    for (int i = 0; i < 240; ++i)
     {
-        x.push_back(i);
-        std::cout << "v: " << x.size() << " i: " << i << std::endl;
+        arena_mr::UnsynchronizedArenaMR memory_resource(10, 10'000);
+
+        steady_clock::time_point begin = steady_clock::now();
+
+        {
+            std::pmr::vector<std::string> x1(&memory_resource);
+            std::pmr::unordered_map<std::string, std::vector<std::string>> x2(&memory_resource);
+            std::pmr::map<std::string, std::vector<std::string>> x3(&memory_resource);
+            for (int i = 0; i < 100'000; ++i)
+            {
+                x1.emplace_back(std::to_string(i));
+                x2.emplace(std::to_string(i), std::vector{std::to_string(i)});
+                x3.emplace(std::to_string(i), std::vector{std::to_string(i)});
+            }
+        }
+        steady_clock::time_point end = steady_clock::now();
+        std::cout << "Time difference = " << duration_cast<nanoseconds>(end - begin).count() << "[ns]" << std::endl;
+    }
+
+    {
+        auto *memory_resource = std::pmr::new_delete_resource();
+
+        steady_clock::time_point begin = steady_clock::now();
+
+        {
+            std::pmr::vector<std::string> x1(memory_resource);
+            std::pmr::unordered_map<std::string, std::vector<std::string>> x2(memory_resource);
+            std::pmr::map<std::string, std::vector<std::string>> x3(memory_resource);
+            for (int i = 0; i < 100'000; ++i)
+            {
+                x1.emplace_back(std::to_string(i));
+                x2.emplace(std::to_string(i), std::vector{std::to_string(i)});
+                x3.emplace(std::to_string(i), std::vector{std::to_string(i)});
+            }
+        }
+        steady_clock::time_point end = steady_clock::now();
+        std::cout << "Time difference = " << duration_cast<nanoseconds>(end - begin).count() << "[ns]" << std::endl;
     }
 }
