@@ -44,18 +44,21 @@ Results are highly depend on how you tune you ArenaMR. If you keep your arenas s
 
 My results for benchmark1:
 
-|                                     | Windows 11 with msvc | (WSL2) Ubuntu-22.04 gcc 12 |
-| :-                                  | :-                   | :-                         |
-| UnsynchronizedArenaMR_BENCHMARK     | 22697600 ns          | 26496114 ns                |
-| new_delete_resource_BENCHMARK       | 38299800 ns          | 43735875 ns                |
-| monotonic_buffer_resource_BENCHMARK | 31345000 ns          | 37285919 ns                |
+|                                           | Windows 11 with msvc | (WSL2) Ubuntu-22.04 gcc 12 |
+| :-                                        | :-                   | :-                         |
+| UnsynchronizedArenaMR_BENCHMARK           | 22576400 ns          | 25308746 ns                |
+| new_delete_resource_BENCHMARK             | 41011800 ns          | 41900324 ns                |
+| unsynchronized_pool_resource_BENCHMARK    | 39549300 ns          | 40610310 ns                |
+| monotonic_buffer_resource_BENCHMARK       | 31132900 ns          | 33789794 ns                |
 
 My results for benchmark2:
 
-|                                     | Windows 11 with msvc | (WSL2) Ubuntu-22.04 gcc 12 |
-| :-                                  | :-                   | :-                         |
-| UnsynchronizedArenaMR_BENCHMARK     | 6893900 ns           | 4684561 ns                 |
-| new_delete_resource_BENCHMARK       | 7163100 ns           | 6900841 ns                 |
-| monotonic_buffer_resource_BENCHMARK | 7785800 ns           | 6221367 ns                 |
+|                                           | Windows 11 with msvc | (WSL2) Ubuntu-22.04 gcc 12 |
+| :-                                        | :-                   | :-                         |
+| UnsynchronizedArenaMR_BENCHMARK           | 2097800 ns           | 2585661 ns                 |
+| new_delete_resource_BENCHMARK             | 2983000 ns           | 1789722 ns                 |
+| unsynchronized_pool_resource_BENCHMARK    | 1810200 ns           | 1727625 ns                 |
+| monotonic_buffer_resource_BENCHMARK       | 1786500 ns           | 1917775 ns                 |
 
-In benchmark1 when `ArenaMR` is advantageous to `monotonic_buffer_resource` because `ArenaMR` can reuse the same space after clear but  `monotonic_buffer_resource` cannot.
+- In Benchmark1 `ArenaMR` is advantageous to `monotonic_buffer_resource` because `ArenaMR` can reuse the same space after clear but  `monotonic_buffer_resource` cannot.
+- In Benchmark2 `monotonic_buffer_resource` is advantageous `ArenaMR` because it never allocates new memory from upstream and does not lose time with the deallocation logic.
