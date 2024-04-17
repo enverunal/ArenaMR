@@ -48,6 +48,7 @@ void SetThreadAffinity(WORD core_number)
 #elif defined(__linux__)
 
 #include "sched.h"
+#include "string.h"
 
 void SetThreadAffinity(int core_number)
 {
@@ -55,7 +56,7 @@ void SetThreadAffinity(int core_number)
     CPU_ZERO(&cpuset);
     CPU_SET(core_number, &cpuset);
 
-    pthread_t thread; // Your thread handle
+    pthread_t thread = pthread_self();
     int result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
     if (result != 0)
     {
