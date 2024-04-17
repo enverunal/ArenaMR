@@ -1,4 +1,5 @@
 #include "ArenaMR/ArenaMR.hpp"
+#include "BenchmarkUtility.hpp"
 
 #include <chrono>
 #include <iostream>
@@ -12,6 +13,7 @@ static void UnsynchronizedArenaMR_BENCHMARK()
 
     steady_clock::time_point begin = steady_clock::now();
 
+    // This for loop will not cause arena_mr to reallocate new space because it can reuse its deallocated space
     for (int j = 0; j < 10; ++j)
     {
         for (int i = 0; i < 100'000; ++i)
@@ -53,6 +55,7 @@ static void monotonic_buffer_resource_BENCHMARK()
 
     steady_clock::time_point begin = steady_clock::now();
 
+    // This for loop will cause monotonic buffer to reallocate new space
     for (int j = 0; j < 10; ++j)
     {
         for (int i = 0; i < 100'000; ++i)
@@ -68,6 +71,8 @@ static void monotonic_buffer_resource_BENCHMARK()
 
 int main()
 {
+    SetThreadAffinity(7);
+
     UnsynchronizedArenaMR_BENCHMARK();
     new_delete_resource_BENCHMARK();
     monotonic_buffer_resource_BENCHMARK();
