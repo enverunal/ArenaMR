@@ -48,6 +48,30 @@ static void new_delete_resource_BENCHMARK()
     std::cout << "new_delete_resource_BENCHMARK: " << duration_cast<nanoseconds>(end - begin).count() << "[ns]" << std::endl;
 }
 
+static void unsynchronized_pool_resource_BENCHMARK()
+{
+    std::pmr::unsynchronized_pool_resource memory_resource(
+        // max_blocks_per_chunk should be 1, largest_required_pool_block should be 40 (I guess)
+        std::pmr::pool_options{/*.max_blocks_per_chunk =*/1'500, /*.largest_required_pool_block =*/40},
+        std::pmr::new_delete_resource());
+    std::pmr::map<int, int> v(&memory_resource);
+
+    steady_clock::time_point begin = steady_clock::now();
+
+    for (int j = 0; j < 100; ++j)
+    {
+        for (int i = 0; i < 1'000; ++i)
+        {
+            v.emplace(i, i);
+            ++i;
+        }
+        v.clear();
+    }
+
+    steady_clock::time_point end = steady_clock::now();
+    std::cout << "unsynchronized_pool_resource_BENCHMARK: " << duration_cast<nanoseconds>(end - begin).count() << "[ns]" << std::endl;
+}
+
 static void monotonic_buffer_resource_BENCHMARK()
 {
     std::pmr::monotonic_buffer_resource memory_resource(1'000'000'000);
@@ -76,5 +100,6 @@ int main()
 
     UnsynchronizedArenaMR_BENCHMARK();
     new_delete_resource_BENCHMARK();
+    unsynchronized_pool_resource_BENCHMARK();
     monotonic_buffer_resource_BENCHMARK();
 }
