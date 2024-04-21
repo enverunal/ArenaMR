@@ -122,7 +122,7 @@ namespace arena_mr
             std::size_t total_allocated_bytes = 0;
             for (auto const &[_, info] : arena_info_map_)
             {
-                total_allocated_bytes += info.Capacity() - info.bytes_left;
+                total_allocated_bytes += info->Capacity() - info->bytes_left;
             }
             return total_allocated_bytes;
         }
@@ -135,10 +135,10 @@ namespace arena_mr
             std::size_t wasted_bytes = 0;
             for (auto const &[_, info] : arena_info_map_)
             {
-                auto is_arena_free = std::find(free_arena_list_.begin(), free_arena_list_.end(), &info) != free_arena_list_.end();
-                if (!is_arena_free && (&info != active_arena_info_))
+                auto is_arena_free = std::find(free_arena_list_.begin(), free_arena_list_.end(), info.get()) != free_arena_list_.end();
+                if (!is_arena_free && (info.get() != active_arena_info_))
                 {
-                    wasted_bytes += info.bytes_left;
+                    wasted_bytes += info->bytes_left;
                 }
             }
             return wasted_bytes;
@@ -147,15 +147,21 @@ namespace arena_mr
     private:
         void AllocateArena(std::size_t bytes, std::size_t alignment = alignof(std::max_align_t))
         {
-            auto *arena = upstream_->allocate(bytes, alignment);
-            [[maybe_unused]] auto [it, suc] = arena_info_map_.insert(std::make_pair(arena, ArenaInfo(0, bytes, (std::byte *)arena)));
-            assert(suc);
-            free_arena_list_.push_back(&it->second);
+            auto *arena = (std::byte *)upstream_->allocate(bytes, alignment);
+            auto arena_info = std::make_unique<ArenaInfo>(0, bytes, arena);
+            free_arena_list_.push_back(arena_info.get());
+
+            // TODO for the following code. We can just find where to insert the arena an avoid overall sorting.
+
+            arena_info_map_.push_back(std::make_pair(arena, std::move(arena_info)));
+            std::sort(arena_info_map_.begin(), arena_info_map_.end(),
+                      [](auto const &pair1, auto const &pair2)
+                      { return pair1.first < pair2.first; });
         }
 
         void InitializeArenas()
         {
-            arena_info_map_.emplace(MIN_POINTER, ArenaInfo{}); // Limit to the bottom of the map
+            arena_info_map_.push_back(std::make_pair(MIN_POINTER, std::make_unique<ArenaInfo>())); // Limit to the bottom of the map
 
             for (size_t i = 0; i < NumOfArenas(); i++)
             {
@@ -183,7 +189,7 @@ namespace arena_mr
                     AllocateArena(bytes); // We can return the inserted so that we will not need to search for the iterator.
 
                     // We do not want this to change active arena because this arena will be consumed immidiately.
-                    auto cur_big_arena = free_arena_list_.back();
+                    auto *cur_big_arena = free_arena_list_.back();
                     free_arena_list_.pop_back();
 
                     // Don't need to do these calculations. Bytes needed is equal to capacity.
@@ -234,7 +240,9 @@ namespace arena_mr
             if (p == nullptr)
                 return;
 
-            auto arena_it = std::prev(arena_info_map_.upper_bound(p));
+            auto arena_it = std::prev(std::upper_bound(arena_info_map_.begin(), arena_info_map_.end(), p,
+                                                       [](void *ptr, auto const &arena_pair)
+                                                       { return ptr < arena_pair.first; }));
 
             // If pointer is allocated from this allocator it should be found in the `arena_info_map_`.
             if (arena_it->first == MIN_POINTER)
@@ -244,20 +252,20 @@ namespace arena_mr
 
             auto &arena = arena_it->second;
 
-            assert(arena.num_of_allocation > 0);
-            arena.num_of_allocation -= 1;
+            assert(arena->num_of_allocation > 0);
+            arena->num_of_allocation -= 1;
 
             // Does not free the allocated arena until num_of_allocation is 0.
 
-            if (arena.num_of_allocation == 0)
+            if (arena->num_of_allocation == 0)
             {
-                arena.num_of_allocation = 0;
-                arena.bytes_left = arena.Capacity();
-                arena.cursor = (std::byte *)arena_it->first;
+                arena->num_of_allocation = 0;
+                arena->bytes_left = arena->Capacity();
+                arena->cursor = (std::byte *)arena_it->first;
 
-                if (&arena != active_arena_info_)
+                if (arena.get() != active_arena_info_)
                 {
-                    free_arena_list_.push_back(&arena);
+                    free_arena_list_.push_back(arena.get());
                 }
             }
         }
@@ -276,7 +284,8 @@ namespace arena_mr
         std::pmr::memory_resource *upstream_;
 
         // If nodes are rarely inserted, it might be better to use vector + binary search.
-        std::pmr::map<void *, ArenaInfo> arena_info_map_;
+        // std::pmr::map<void *, ArenaInfo> arena_info_map_;
+        std::pmr::vector<std::pair<void *, std::unique_ptr<ArenaInfo>>> arena_info_map_;
 
         std::pmr::vector<ArenaInfo *> free_arena_list_;
 
