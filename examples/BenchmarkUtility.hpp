@@ -1,6 +1,7 @@
 
 #include <string>
 #include <iostream>
+#include <functional>
 
 #ifdef _WIN32
 

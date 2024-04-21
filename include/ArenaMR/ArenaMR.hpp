@@ -9,6 +9,7 @@
 #include <exception>
 #include <map>
 #include <memory_resource>
+#include <memory>
 #include <numeric>
 #include <vector>
 
