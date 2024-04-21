@@ -6,7 +6,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <exception>
 #include <map>
 #include <memory_resource>
 #include <memory>
@@ -66,21 +65,6 @@ namespace arena_mr
 
     private:
         std::size_t capacity_ = 0;
-    };
-
-    struct ArenaMrCorruption : std::runtime_error
-    {
-        ArenaMrCorruption(void *address, std::size_t bytes, std::size_t alignment)
-            : std::runtime_error("Double-free or memory corruption in memory resource."),
-              address(address),
-              bytes(bytes),
-              alignment(alignment)
-        {
-        }
-
-        void *address = nullptr;
-        std::size_t bytes = 0;
-        std::size_t alignment = 0;
     };
 
     class UnsynchronizedArenaMR : public std::pmr::memory_resource
@@ -164,6 +148,8 @@ namespace arena_mr
         {
             arena_info_map_.push_back(std::make_pair(MIN_POINTER, std::make_unique<ArenaInfo>())); // Limit to the bottom of the map
 
+            // TODO: We just need to sort once.
+
             for (size_t i = 0; i < NumOfArenas(); i++)
             {
                 AllocateArena(SizePerArena());
@@ -236,7 +222,7 @@ namespace arena_mr
             return DoAllocateDetails(bytes, alignment);
         }
 
-        void do_deallocate(void *p, std::size_t bytes = 0, std::size_t alignment = alignof(std::max_align_t)) override
+        void do_deallocate(void *p, [[maybe_unused]] std::size_t bytes = 0, [[maybe_unused]] std::size_t alignment = alignof(std::max_align_t)) noexcept override
         {
             if (p == nullptr)
                 return;
@@ -246,14 +232,11 @@ namespace arena_mr
                                                        { return ptr < arena_pair.first; }));
 
             // If pointer is allocated from this allocator it should be found in the `arena_info_map_`.
-            if (arena_it->first == MIN_POINTER)
-            {
-                throw ArenaMrCorruption(p, bytes, alignment);
-            }
+            assert(arena_it->first != MIN_POINTER);
 
             auto &arena = arena_it->second;
 
-            assert(arena->num_of_allocation > 0);
+            assert(arena->num_of_allocation > 0); // Else double free or memory corruption
             arena->num_of_allocation -= 1;
 
             // Does not free the allocated arena until num_of_allocation is 0.
@@ -266,6 +249,7 @@ namespace arena_mr
 
                 if (arena.get() != active_arena_info_)
                 {
+                    // This cannot cause allocation because we are just returning the arena back to `free_arena_list`.
                     free_arena_list_.push_back(arena.get());
                 }
             }
@@ -284,8 +268,6 @@ namespace arena_mr
 
         std::pmr::memory_resource *upstream_;
 
-        // If nodes are rarely inserted, it might be better to use vector + binary search.
-        // std::pmr::map<void *, ArenaInfo> arena_info_map_;
         std::pmr::vector<std::pair<void *, std::unique_ptr<ArenaInfo>>> arena_info_map_;
 
         std::pmr::vector<ArenaInfo *> free_arena_list_;
