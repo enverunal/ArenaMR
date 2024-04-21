@@ -8,7 +8,28 @@ using namespace std::chrono;
 
 static uint64_t UnsynchronizedArenaMR_BENCHMARK()
 {
-    arena_mr::UnsynchronizedArenaMR memory_resource(100, 1'000'000); // tune your arena
+    arena_mr::UnsynchronizedArenaMR memory_resource(10, 10'000'000); // tune your arena
+    std::pmr::map<int, int> v(&memory_resource);
+
+    steady_clock::time_point begin = steady_clock::now();
+
+    // This for loop will not cause arena_mr to reallocate new space because it can reuse its deallocated space
+    for (int i = 0; i < 100; ++i)
+    {
+        for (int j = 0; j < 1'000; ++j)
+        {
+            v.emplace(j, j);
+        }
+        v.clear();
+    }
+
+    steady_clock::time_point end = steady_clock::now();
+    return duration_cast<nanoseconds>(end - begin).count();
+}
+
+static uint64_t UnsynchronizedArenaMR2_BENCHMARK()
+{
+    arena_mr::UnsynchronizedArenaMR memory_resource(10000, 10'000); // tune your arena
     std::pmr::map<int, int> v(&memory_resource);
 
     steady_clock::time_point begin = steady_clock::now();
@@ -97,29 +118,15 @@ int main()
     const int warm_count = 10;
     const int avg_count = 10;
 
-    for (int i = 0; i < warm_count; ++i)
-    {
-        UnsynchronizedArenaMR_BENCHMARK();
-        new_delete_resource_BENCHMARK();
-        unsynchronized_pool_resource_BENCHMARK();
-        monotonic_buffer_resource_BENCHMARK();
-    }
+    auto UnsynchronizedArenaMR_avg_time = WarmAndRun(warm_count, avg_count, UnsynchronizedArenaMR_BENCHMARK);
+    auto UnsynchronizedArenaMR2_avg_time = WarmAndRun(warm_count, avg_count, UnsynchronizedArenaMR2_BENCHMARK);
+    auto new_delete_resource_avg_time = WarmAndRun(warm_count, avg_count, new_delete_resource_BENCHMARK);
+    auto unsynchronized_pool_resource_avg_time = WarmAndRun(warm_count, avg_count, unsynchronized_pool_resource_BENCHMARK);
+    auto monotonic_buffer_resource_avg_time = WarmAndRun(warm_count, avg_count, monotonic_buffer_resource_BENCHMARK);
 
-    uint64_t UnsynchronizedArenaMR_count = 0;
-    uint64_t new_delete_resource_count = 0;
-    uint64_t unsynchronized_pool_resource_count = 0;
-    uint64_t monotonic_buffer_resource_count = 0;
-
-    for (int i = 0; i < avg_count; ++i)
-    {
-        UnsynchronizedArenaMR_count += UnsynchronizedArenaMR_BENCHMARK();
-        new_delete_resource_count += new_delete_resource_BENCHMARK();
-        unsynchronized_pool_resource_count += unsynchronized_pool_resource_BENCHMARK();
-        monotonic_buffer_resource_count += monotonic_buffer_resource_BENCHMARK();
-    }
-
-    std::cout << "UnsynchronizedArenaMR_BENCHMARK: " << UnsynchronizedArenaMR_count / avg_count << "[ns]" << std::endl;
-    std::cout << "new_delete_resource_BENCHMARK: " << new_delete_resource_count / avg_count << "[ns]" << std::endl;
-    std::cout << "unsynchronized_pool_resource_BENCHMARK: " << unsynchronized_pool_resource_count / avg_count << "[ns]" << std::endl;
-    std::cout << "monotonic_buffer_resource_BENCHMARK: " << monotonic_buffer_resource_count / avg_count << "[ns]" << std::endl;
+    std::cout << "UnsynchronizedArenaMR_BENCHMARK: " << UnsynchronizedArenaMR_avg_time << "[ns]" << std::endl;
+    std::cout << "UnsynchronizedArenaMR2_BENCHMARK: " << UnsynchronizedArenaMR2_avg_time << "[ns]" << std::endl;
+    std::cout << "new_delete_resource_BENCHMARK: " << new_delete_resource_avg_time << "[ns]" << std::endl;
+    std::cout << "unsynchronized_pool_resource_BENCHMARK: " << unsynchronized_pool_resource_avg_time << "[ns]" << std::endl;
+    std::cout << "monotonic_buffer_resource_BENCHMARK: " << monotonic_buffer_resource_avg_time << "[ns]" << std::endl;
 }

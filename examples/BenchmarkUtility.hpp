@@ -72,3 +72,21 @@ void SetThreadAffinity(int core_number)
 }
 
 #endif
+
+template <typename Callback>
+uint64_t WarmAndRun(int warm_count, int avg_count, Callback &&callback)
+{
+    for (int i = 0; i < warm_count; ++i)
+    {
+        std::invoke(std::forward<Callback>(callback));
+    }
+
+    uint64_t avg_time = 0;
+
+    for (int i = 0; i < avg_count; ++i)
+    {
+        avg_time += std::invoke(std::forward<Callback>(callback));
+    }
+
+    return avg_time / avg_count;
+}

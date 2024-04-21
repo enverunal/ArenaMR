@@ -97,29 +97,13 @@ int main()
     const int warm_count = 10;
     const int avg_count = 10;
 
-    for (int i = 0; i < warm_count; ++i)
-    {
-        UnsynchronizedArenaMR_BENCHMARK();
-        new_delete_resource_BENCHMARK();
-        unsynchronized_pool_resource_BENCHMARK();
-        monotonic_buffer_resource_BENCHMARK();
-    }
+    auto UnsynchronizedArenaMR_avg_time = WarmAndRun(warm_count, avg_count, UnsynchronizedArenaMR_BENCHMARK);
+    auto new_delete_resource_avg_time = WarmAndRun(warm_count, avg_count, new_delete_resource_BENCHMARK);
+    auto unsynchronized_pool_resource_avg_time = WarmAndRun(warm_count, avg_count, unsynchronized_pool_resource_BENCHMARK);
+    auto monotonic_buffer_resource_avg_time = WarmAndRun(warm_count, avg_count, monotonic_buffer_resource_BENCHMARK);
 
-    uint64_t UnsynchronizedArenaMR_count = 0;
-    uint64_t new_delete_resource_count = 0;
-    uint64_t unsynchronized_pool_resource_count = 0;
-    uint64_t monotonic_buffer_resource_count = 0;
-
-    for (int i = 0; i < avg_count; ++i)
-    {
-        UnsynchronizedArenaMR_count += UnsynchronizedArenaMR_BENCHMARK();
-        new_delete_resource_count += new_delete_resource_BENCHMARK();
-        unsynchronized_pool_resource_count += unsynchronized_pool_resource_BENCHMARK();
-        monotonic_buffer_resource_count += monotonic_buffer_resource_BENCHMARK();
-    }
-
-    std::cout << "UnsynchronizedArenaMR_BENCHMARK: " << UnsynchronizedArenaMR_count / avg_count << "[ns]" << std::endl;
-    std::cout << "new_delete_resource_BENCHMARK: " << new_delete_resource_count / avg_count << "[ns]" << std::endl;
-    std::cout << "unsynchronized_pool_resource_BENCHMARK: " << unsynchronized_pool_resource_count / avg_count << "[ns]" << std::endl;
-    std::cout << "monotonic_buffer_resource_BENCHMARK: " << monotonic_buffer_resource_count / avg_count << "[ns]" << std::endl;
+    std::cout << "UnsynchronizedArenaMR_BENCHMARK: " << UnsynchronizedArenaMR_avg_time << "[ns]" << std::endl;
+    std::cout << "new_delete_resource_BENCHMARK: " << new_delete_resource_avg_time << "[ns]" << std::endl;
+    std::cout << "unsynchronized_pool_resource_BENCHMARK: " << unsynchronized_pool_resource_avg_time << "[ns]" << std::endl;
+    std::cout << "monotonic_buffer_resource_BENCHMARK: " << monotonic_buffer_resource_avg_time << "[ns]" << std::endl;
 }
