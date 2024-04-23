@@ -135,12 +135,17 @@ namespace arena_mr
             auto arena_info = std::make_unique<ArenaInfo>(0, bytes, arena);
             free_arena_list_.push_back(arena_info.get());
 
-            // TODO for the following code. We can just find where to insert the arena an avoid overall sorting.
+            // Insert to already sorted array and keep it sorted
 
-            arena_info_map_.push_back(std::make_pair(arena, std::move(arena_info)));
-            std::sort(arena_info_map_.begin(), arena_info_map_.end(),
-                      [](auto const &pair1, auto const &pair2)
-                      { return pair1.first < pair2.first; });
+            auto insert_it = std::upper_bound(arena_info_map_.begin(), arena_info_map_.end(), (void *)arena,
+                                              [](void *ptr, auto const &arena_pair)
+                                              { return ptr < arena_pair.first; });
+
+            arena_info_map_.insert(insert_it, std::make_pair(arena, std::move(arena_info)));
+
+            assert(true == std::is_sorted(arena_info_map_.begin(), arena_info_map_.end(),
+                                          [](auto const &arena_pair1, auto const &arena_pair2)
+                                          { return arena_pair1.first < arena_pair2.first; }));
         }
 
         void InitializeArenas()
