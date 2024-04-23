@@ -6,7 +6,6 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <map>
 #include <memory_resource>
 #include <memory>
 #include <numeric>
