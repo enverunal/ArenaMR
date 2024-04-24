@@ -66,6 +66,11 @@ namespace arena_mr
         std::size_t capacity_ = 0;
     };
 
+    /*
+        A non-thread-safe memory resource that manages pools of memory.
+
+        * Do not access to moved `UnsynchronizedArenaMR` object.
+    */
     class UnsynchronizedArenaMR : public std::pmr::memory_resource
     {
     public:
@@ -81,11 +86,19 @@ namespace arena_mr
             InitializeArenas();
         }
 
+        UnsynchronizedArenaMR(UnsynchronizedArenaMR const &) = delete;
+        UnsynchronizedArenaMR &operator=(UnsynchronizedArenaMR const &) = delete;
+        virtual ~UnsynchronizedArenaMR() {}
+
+        // TODO Write another function to get current number of arenas.
+
+        // Initial value for number of arenas
         std::size_t NumOfArenas() const noexcept
         {
             return num_of_arenas_;
         }
 
+        // Initial value for size per arena
         std::size_t SizePerArena() const noexcept
         {
             return size_per_arena_;
@@ -220,6 +233,8 @@ namespace arena_mr
     protected:
         void *do_allocate(std::size_t bytes, std::size_t alignment) override
         {
+            assert(!arena_info_map_.empty()); // Access to moved object
+
             if (bytes == 0)
                 return nullptr;
 
@@ -228,6 +243,8 @@ namespace arena_mr
 
         void do_deallocate(void *p, [[maybe_unused]] std::size_t bytes = 0, [[maybe_unused]] std::size_t alignment = alignof(std::max_align_t)) noexcept override
         {
+            assert(!arena_info_map_.empty()); // Access to moved object
+
             if (p == nullptr)
                 return;
 
@@ -261,6 +278,8 @@ namespace arena_mr
 
         bool do_is_equal(std::pmr::memory_resource const &other) const noexcept override
         {
+            assert(!arena_info_map_.empty()); // Access to moved object
+
             return (this == &other);
         }
 
